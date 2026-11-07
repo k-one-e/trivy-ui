@@ -196,6 +196,14 @@ func main() {
 		utils.LogWarning("ENABLE_RESCAN has no effect without authentication (AUTH_MODE=local or proxy)", nil)
 	}
 	api.ConfigureRescan(rescanConfig)
+	if raw := os.Getenv("SCAN_STALE_AFTER"); raw != "" {
+		age, err := time.ParseDuration(raw)
+		if err != nil || age <= 0 {
+			utils.LogError("Invalid SCAN_STALE_AFTER", map[string]interface{}{"value": raw})
+			os.Exit(1)
+		}
+		api.ConfigureScanStaleAfter(age)
+	}
 	sourceScope, err := dataaccess.NewFromEnv()
 	if err != nil {
 		utils.LogError("Failed to initialize cluster source scope", map[string]interface{}{"error": err.Error()})

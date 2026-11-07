@@ -20,6 +20,8 @@ Every response includes an `X-Request-ID` header for tracing and correlation in 
 | `GET` | `/api/v1/reports` | List reports matching filter criteria (paginated) | Public / Scoped |
 | `GET` | `/api/v1/reports/{cluster}/{type}/{namespace}/{name}` | Get complete report details (on-demand K8s query) | Public / Scoped |
 | `GET` | `/api/v1/overview` | Totals per family of findings, top workloads, namespaces (see below) | Public / Scoped |
+| `GET` | `/api/v1/vulnerabilities` | Distinct vulnerabilities with affected workloads/images (`cluster`, `namespace`, `search`, `severity`, `fixable`, `limit`) | Public / Scoped |
+| `GET` | `/api/v1/images` | Vulnerability counts per image and the workloads running it (`cluster`, `namespace`, `search`) | Public / Scoped |
 | `GET` | `/api/v1/rescan` | Whether the current user may rescan, and rescans in progress | Public / Scoped |
 | `POST` | `/api/v1/reports/{cluster}/{type}/{namespace}/{name}/rescan` | Rescan one report (`ENABLE_RESCAN`) | Rescan groups |
 | `POST` | `/api/v1/rescan` | Rescan all matching reports; body `{"cluster", "namespaces", "types", "olderThan", "dryRun"}` | Rescan groups |
@@ -49,6 +51,7 @@ Every response includes an `X-Request-ID` header for tracing and correlation in 
 | `vulnerable_namespaces` / `vulnerable_clusters` | Ranked by vulnerability findings |
 | `scan_types_breakdown` | Per report type: `scanned`, `with_findings` (`failed` is the same value, kept for compatibility) |
 | `severity_totals` | Every report type added up (compatibility; prefer `families`) |
+| `stale_reports` / `stale_after_hours` | Reports not rescanned for longer than `SCAN_STALE_AFTER` (default `72h`) |
 
 `/api/v1/overview/trends` records carry `kind: "vulnerabilities"` and count
 vulnerability reports only; records without `kind` were written by older
@@ -60,6 +63,10 @@ The ServiceAccount should be allowed to `list`/`watch` `apps/replicasets` to
 resolve Deployment names and retired ReplicaSets (the chart grants it); without
 it, names are derived from the ReplicaSet name.
 
+Settings: `SCAN_STALE_AFTER` (default `72h`) and `CVE_INDEX` (default on; `false`
+drops the compact findings behind `/api/v1/vulnerabilities` and `/api/v1/images`
+to save memory on very large clusters).
+
 ## Query Parameters for `/api/v1/reports`
 
 | Parameter | Type | Description | Example |
@@ -69,6 +76,7 @@ it, names are derived from the ReplicaSet name.
 | `namespace` | `string` | Filter by one or more comma-separated namespaces | `?namespace=team-a,team-b` |
 | `search` | `string` | Search report name, cluster, namespace, or container image | `?search=nginx` |
 | `onlyVulnerable` | `boolean` | When `true`, filters out clean reports with zero findings | `?onlyVulnerable=true` |
+| `sort` | `string` | `severity` (most severe first), `fixable` (most fixable Critical/High first), `scanned` (oldest scan first); default by name | `?sort=severity` |
 | `page` | `integer` | Page number (1-indexed, default: `1`) | `?page=2` |
 | `pageSize` | `integer` | Number of items per page (default: `20`, max: `100`) | `?pageSize=50` |
 

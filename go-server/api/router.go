@@ -143,6 +143,20 @@ func (r *Router) Setup(staticPath string) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
+	r.mux.HandleFunc("/api/v1/vulnerabilities", func(w http.ResponseWriter, req *http.Request) {
+		if req.Method == http.MethodGet || req.Method == http.MethodOptions {
+			r.handler.GetVulnerabilities(w, req)
+		} else {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	r.mux.HandleFunc("/api/v1/images", func(w http.ResponseWriter, req *http.Request) {
+		if req.Method == http.MethodGet || req.Method == http.MethodOptions {
+			r.handler.GetImages(w, req)
+		} else {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
 	r.mux.HandleFunc("/api/report-types", r.handler.GetReportTypes)
 	// Canonical v1 aliases. Legacy routes above remain for one compatibility cycle.

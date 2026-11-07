@@ -19,6 +19,7 @@ interface Summary {
   highCount?: number
   mediumCount?: number
   lowCount?: number
+  unknownCount?: number
   noneCount?: number
 }
 
@@ -395,7 +396,12 @@ export function ReportDetails({
                 isSingleClusterMode={isSingleClusterMode}
               />
 
-              {summary && <SummaryCard summary={summary} />}
+              {summary && (
+                <SummaryCard
+                  summary={summary}
+                  fixable={hasVulnerabilitiesType ? vulnerabilities.filter((v) => (v.fixedVersion || "").trim() !== "").length : undefined}
+                />
+              )}
 
               {hasVulnerabilitiesType && (
                 <VulnerabilitySection vulnerabilities={vulnerabilities} />

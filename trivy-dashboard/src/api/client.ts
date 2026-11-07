@@ -47,6 +47,15 @@ export interface Report {
   ref?: ReportRef
   updated_at?: string
   rescan?: RescanState
+  workload?: Workload
+}
+
+// Workload a report belongs to: the Deployment behind a ReplicaSet, or the
+// scanned resource itself. Retired: a ReplicaSet kept only for rollback.
+export interface Workload {
+  kind?: string
+  name: string
+  retired?: boolean
 }
 
 export interface RescanState {
@@ -94,32 +103,65 @@ export interface PaginatedResponse<T> {
   data: T[]
 }
 
+// All report types added up; kept for compatibility, use families instead.
 export interface SeverityTotals {
   critical: number
   high: number
   medium: number
   low: number
+  unknown?: number
+}
+
+export interface FamilyTotals {
+  reports: number
+  with_findings: number
+  critical: number
+  high: number
+  medium: number
+  low: number
+  unknown: number
+  fixable_critical: number
+  fixable_high: number
+  fixable_medium: number
+  fixable_low: number
+  fixable_unknown: number
+}
+
+export interface FamilyOverview {
+  vulnerabilities: FamilyTotals
+  misconfigurations: FamilyTotals
+  rbac: FamilyTotals
+  secrets: FamilyTotals
+  compliance: { reports: number; pass: number; fail: number }
 }
 
 export interface TypeBreakdown {
   scanned: number
+  with_findings?: number
   failed: number
   critical: number
 }
 
+// A workload with the vulnerabilities of all its containers.
 export interface WorkloadSummary {
   cluster: string
   namespace: string
   name: string
+  kind?: string
   type: string
   critical: number
   high: number
+  fixable_critical?: number
+  fixable_high?: number
+  reports?: string[]
 }
 
 export interface ClusterSummary {
   name: string
   critical: number
   high: number
+  fixable_critical?: number
+  fixable_high?: number
 }
 
 export interface NamespaceSummary {
@@ -127,11 +169,15 @@ export interface NamespaceSummary {
   name: string
   critical: number
   high: number
+  fixable_critical?: number
+  fixable_high?: number
 }
 
 export interface ClusterOverview {
   total_reports: number
   severity_totals: SeverityTotals
+  families?: FamilyOverview
+  retired_reports?: number
   scan_types_breakdown: Record<string, TypeBreakdown>
   top_vulnerable_workloads: WorkloadSummary[]
   vulnerable_clusters?: ClusterSummary[]
@@ -142,9 +188,16 @@ export interface TrendRecord {
   timestamp: string
   cluster: string
   namespace?: string
+  // "vulnerabilities": vulnerability reports only; absent: older records that
+  // added up every report type.
+  kind?: string
   critical: number
   high: number
   medium: number
+  low?: number
+  unknown?: number
+  fixable_critical?: number
+  fixable_high?: number
 }
 
 export const CLUSTER_SCOPED_NAMESPACE = "_"

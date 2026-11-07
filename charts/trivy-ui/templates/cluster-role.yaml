@@ -14,6 +14,15 @@ rules:
       - get
       - list
       - watch
+  # Maps ReplicaSets to their Deployment and detects retired ReplicaSets
+  # (scaled to zero); without it names are derived from the report name.
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - list
+      - watch
   {{- if .Values.rescan.enabled }}
   # Rescan deletes a report so the Trivy Operator scans the workload again.
   - apiGroups:

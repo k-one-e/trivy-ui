@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react"
+import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import { useSearchParams } from "react-router-dom"
 import { Sidebar } from "./ui/sidebar"
 import { Button } from "./ui/button"
@@ -8,12 +8,13 @@ import { getCachedFresh, setCached } from "../lib/apiCache"
 import { toast } from "../lib/toast"
 import { CustomErrorPage } from "./CustomErrorPage"
 import { LogOut, Shield, Loader2, AlertTriangle } from "lucide-react"
+import { lazyWithReload } from "@/lib/lazyWithReload"
 
-const ReportDetails = lazy(() => import("./ReportDetails").then((module) => ({ default: module.ReportDetails })))
-const OverviewDashboard = lazy(() => import("./OverviewDashboard").then((module) => ({ default: module.OverviewDashboard })))
-const GlobalHub = lazy(() => import("./GlobalHub").then((module) => ({ default: module.GlobalHub })))
-const CveView = lazy(() => import("./CveView").then((module) => ({ default: module.CveView })))
-const ImagesView = lazy(() => import("./ImagesView").then((module) => ({ default: module.ImagesView })))
+const ReportDetails = lazyWithReload(() => import("./ReportDetails").then((module) => ({ default: module.ReportDetails })))
+const OverviewDashboard = lazyWithReload(() => import("./OverviewDashboard").then((module) => ({ default: module.OverviewDashboard })))
+const GlobalHub = lazyWithReload(() => import("./GlobalHub").then((module) => ({ default: module.GlobalHub })))
+const CveView = lazyWithReload(() => import("./CveView").then((module) => ({ default: module.CveView })))
+const ImagesView = lazyWithReload(() => import("./ImagesView").then((module) => ({ default: module.ImagesView })))
 
 const METADATA_REFRESH_INTERVAL = 30000
 const COUNTS_REFRESH_INTERVAL = 15000

@@ -129,6 +129,12 @@ func (c *Client) Workloads() *WorkloadResolver {
 	return c.workloads
 }
 
+// Ready reports whether lookups give final answers: the ReplicaSet informer
+// has synced, or the exact lookup is disabled (no RBAC) and never will.
+func (r *WorkloadResolver) Ready() bool {
+	return r != nil && (!r.enabled || r.synced.Load())
+}
+
 func (r *WorkloadResolver) set(u *unstructured.Unstructured) {
 	info := replicaSetInfo{}
 	info.replicas, _, _ = unstructured.NestedInt64(u.Object, "spec", "replicas")

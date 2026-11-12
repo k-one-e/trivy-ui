@@ -43,7 +43,8 @@ func (c *Cache) recordTrend() {
 	}
 
 	// A process restart can run recordTrend twice in the same hour. Replace the
-	// existing bucket rather than appending a second point for the same scope.
+	// existing bucket rather than appending a second point for the same scope;
+	// recordTrendWhenReady makes sure the replacement is complete.
 	buckets := make(map[string]TrendRecord, len(records))
 	for _, record := range records {
 		if record.Timestamp.Before(now.Add(-90 * 24 * time.Hour)) {
@@ -91,13 +92,56 @@ func (c *Cache) recordTrend() {
 	}
 }
 
+// A sample taken before the report informers or the ReplicaSet informer have
+// synced counts old ReplicaSets as live (or misses reports), so it waits for
+// both and skips the hour rather than recording a wrong point.
+const (
+	trendReadyPoll    = 10 * time.Second
+	trendReadyTimeout = 30 * time.Minute
+)
+
+func trendDataReady() bool {
+	clients := GetAllClusterClients()
+	if len(clients) == 0 {
+		return false
+	}
+	for _, client := range clients {
+		client.mu.RLock()
+		state := client.SyncState
+		client.mu.RUnlock()
+		if state != "FullySynced" || client.Client == nil || !client.Client.Workloads().Ready() {
+			return false
+		}
+	}
+	return true
+}
+
+func waitForTrendData(ready func() bool, poll, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for !ready() {
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(poll)
+	}
+	return true
+}
+
+func (c *Cache) recordTrendWhenReady() {
+	if !waitForTrendData(trendDataReady, trendReadyPoll, trendReadyTimeout) {
+		utils.LogWarning("Skipping trend sample: cluster data not fully synced", nil)
+		return
+	}
+	c.recordTrend()
+}
+
 func (c *Cache) periodicTrendRecord() {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 
-	c.recordTrend()
+	c.recordTrendWhenReady()
 	for range ticker.C {
-		c.recordTrend()
+		c.recordTrendWhenReady()
 	}
 }
 

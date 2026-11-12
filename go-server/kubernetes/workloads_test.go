@@ -85,3 +85,22 @@ func TestWorkloadResolverResolve(t *testing.T) {
 		t.Fatal("a scaled ReplicaSet must bump the generation")
 	}
 }
+
+func TestWorkloadResolverReady(t *testing.T) {
+	var missing *WorkloadResolver
+	if missing.Ready() {
+		t.Fatal("a resolver that was never started is not ready")
+	}
+	resolver := newWorkloadResolver()
+	if !resolver.Ready() {
+		t.Fatal("without ReplicaSet access the lookup is final right away")
+	}
+	resolver.enabled = true
+	if resolver.Ready() {
+		t.Fatal("not ready before the ReplicaSet informer synced")
+	}
+	resolver.synced.Store(true)
+	if !resolver.Ready() {
+		t.Fatal("ready once the ReplicaSet informer synced")
+	}
+}

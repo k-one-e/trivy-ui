@@ -35,6 +35,18 @@ func reportFamily(reportType string) string {
 	return ""
 }
 
+// rescannedOnSchedule reports whether the operator rescans this report type
+// on its own (scannerReportTTL). Config audit, RBAC and infra reports are only
+// rebuilt when the resource or the policies change, so their age says nothing
+// about whether the operator is scanning.
+func rescannedOnSchedule(reportType string) bool {
+	switch reportFamily(reportType) {
+	case familyVulnerabilities, familySecrets:
+		return true
+	}
+	return false
+}
+
 type FamilyTotals struct {
 	Reports         int `json:"reports"`
 	WithFindings    int `json:"with_findings"`
@@ -140,7 +152,7 @@ func aggregateOverview(reports []Report, include func(Report) bool, resolve work
 			continue
 		}
 		counts := countReport(report)
-		if scanned, ok := reportScannedAt(report); ok && scanned.Before(staleBefore) {
+		if scanned, ok := reportScannedAt(report); ok && scanned.Before(staleBefore) && rescannedOnSchedule(report.Type) {
 			overview.StaleReports++
 		}
 
@@ -320,8 +332,9 @@ type ClusterOverview struct {
 	SeverityTotals SeverityTotals `json:"severity_totals"`
 	Families       FamilyOverview `json:"families"`
 	RetiredReports int            `json:"retired_reports"`
-	// Reports not rescanned for longer than StaleAfterHours (SCAN_STALE_AFTER):
-	// the operator may not be scanning.
+	// Reports the operator rescans on a schedule (vulnerabilities, secrets)
+	// not rescanned for longer than StaleAfterHours (SCAN_STALE_AFTER): the
+	// operator may not be scanning.
 	StaleReports       int                      `json:"stale_reports"`
 	StaleAfterHours    int                      `json:"stale_after_hours"`
 	ScanTypesBreakdown map[string]TypeBreakdown `json:"scan_types_breakdown"`

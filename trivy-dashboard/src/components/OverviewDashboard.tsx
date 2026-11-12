@@ -176,7 +176,7 @@ function OverviewDashboardInternal({ selectedCluster, onSelectNamespace, onSelec
           {(data.stale_reports ?? 0) > 0 && (
             <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
               <span>
-                {data.stale_reports} report{data.stale_reports === 1 ? " was" : "s were"} not rescanned for more than {data.stale_after_hours ?? 72} hours — check that the Trivy Operator is scanning.
+                {data.stale_reports} vulnerability/secret report{data.stale_reports === 1 ? " was" : "s were"} not rescanned for more than {data.stale_after_hours ?? 72} hours — check that the Trivy Operator is scanning.
               </span>
               {onShowStale && <button onClick={onShowStale} className="font-medium underline">Show oldest scans</button>}
             </div>

@@ -190,6 +190,9 @@ func TestSortReports(t *testing.T) {
 func TestAggregateOverviewCountsStaleReports(t *testing.T) {
 	ConfigureScanStaleAfter(72 * time.Hour)
 	reports := viewsFixture()
+	// Config audits are only rebuilt when the resource changes, so an old one is not stale.
+	reports = append(reports, Report{Cluster: "nuc", Namespace: "default", Type: "configauditreports", Name: "service-web",
+		Data: map[string]interface{}{"report": map[string]interface{}{"updateTimestamp": time.Now().Add(-200 * time.Hour).UTC().Format(time.RFC3339)}}})
 	overview := aggregateOverview(reports, nil, registryWorkloadResolver(nil))
 	if overview.StaleReports != 1 || overview.StaleAfterHours != 72 {
 		t.Fatalf("stale=%d after=%d", overview.StaleReports, overview.StaleAfterHours)

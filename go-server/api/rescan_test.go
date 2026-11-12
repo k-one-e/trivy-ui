@@ -294,6 +294,35 @@ func TestBulkRescanFiltersAndLimits(t *testing.T) {
 	}
 }
 
+func TestBulkRescanSkipsRetiredWorkloads(t *testing.T) {
+	f := newRescanFixture(t, enabledRescanConfig())
+	previous := rescanWorkloadResolver
+	rescanWorkloadResolver = func(*ClusterRegistry) workloadResolverFunc {
+		return func(report Report) kubernetes.Workload {
+			return kubernetes.Workload{Name: report.Name, Retired: report.Name == "replicaset-old-1-app"}
+		}
+	}
+	t.Cleanup(func() { rescanWorkloadResolver = previous })
+	f.addReport(t, vulnReportObject("default", "replicaset-old-1-app", "uid-old", "1", time.Now().Add(-96*time.Hour)))
+	f.addReport(t, vulnReportObject("default", "replicaset-live-1-app", "uid-live", "1", time.Now().Add(-96*time.Hour)))
+
+	recorder, response := f.do(t, http.MethodPost, "/api/v1/rescan", "admins", map[string]interface{}{
+		"cluster": rescanCluster, "namespaces": []string{"default"}, "types": []string{"vulnerabilityreports"},
+	}, nil)
+	if data, _ := response.Data.(map[string]interface{}); recorder.Code != http.StatusAccepted || data["accepted"] != float64(1) {
+		t.Fatalf("bulk rescan: %d %s", recorder.Code, recorder.Body.String())
+	}
+	if rescans.holds(reportKey(rescanCluster, "default", "vulnerabilityreports", "replicaset-old-1-app")) {
+		t.Fatal("the retired workload's report must not be rescanned")
+	}
+	if _, err := f.dynamic.Resource(vulnGVR).Namespace("default").Get(context.Background(), "replicaset-old-1-app", metav1.GetOptions{}); err != nil {
+		t.Fatalf("the retired workload's report must be kept: %v", err)
+	}
+	if !rescans.holds(reportKey(rescanCluster, "default", "vulnerabilityreports", "replicaset-live-1-app")) {
+		t.Fatal("the live workload's report should be rescanned")
+	}
+}
+
 func TestRescanStatusWithoutAuthentication(t *testing.T) {
 	ConfigureRescan(enabledRescanConfig())
 	t.Cleanup(func() {

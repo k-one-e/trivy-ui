@@ -106,6 +106,8 @@ var (
 	rescanConfigMu sync.RWMutex
 	rescanConfig   = RescanConfig{Types: defaultRescanTypes, Timeout: 6 * time.Hour, MaxBulk: 50, MaxPending: 100}
 	rescans        = newRescanTracker()
+	// Swappable in tests, which have no ReplicaSet informer.
+	rescanWorkloadResolver = registryWorkloadResolver
 )
 
 // ConfigureRescan sets the rescan configuration for all handlers.
@@ -518,6 +520,7 @@ func (h *Handler) RescanBulk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	registry := h.reportRegistry(request.Cluster)
+	resolve := rescanWorkloadResolver(h.clusterReg)
 	var matches []Report
 	for _, report := range cache.ReportSummaries() {
 		if report.Cluster != request.Cluster || !types[report.Type] {
@@ -530,6 +533,11 @@ func (h *Handler) RescanBulk(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if rescans.holds(reportKey(report.Cluster, report.Namespace, report.Type, report.Name)) {
+			continue
+		}
+		// The operator does not scan workloads without pods (old ReplicaSets
+		// after a rollout), so their deleted report would never come back.
+		if resolve(report).Retired {
 			continue
 		}
 		if !cutoff.IsZero() {
